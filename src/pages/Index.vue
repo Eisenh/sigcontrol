@@ -5,27 +5,8 @@
     <h6> Control of Power Supply with SCPI over WebUSBTMC</h6>
     <div class="q-gutter-md">
       <div class="row q-gutter-md ">
-        <div class="col-xs-12 col-sm-6 col-md-4">
-          <q-card >
-            <q-card-section class="q-gutter-md">
-              <div class="text-h6">Options</div>
-              <div class="text-subtitle2">Choose units to accumulate</div>
-              <q-option-group
-                v-model="group"
-                :options="accumUnits"
-                color="green"
-                left-label
-                inline
-              />
-             
-              <input type="text" ref="accumQuant" class="form-control" placeholder="Enter stop point" /> {{group}}
-              <br> Read Interval <input type="number" v-model="readInterval" /> ms 
-            <q-btn ref="startBtn"  @click="startBtnClick()"> Start</q-btn>
-            </q-card-section>
-          </q-card>
-        </div>
         
-        <div class="col-xs-12 col-sm-6 col-md-4 ">
+        <div class="col-xs-12  col-md-4 ">
           <q-card >
             <q-card-section class="q-gutter-md" >
               <div class="text-h6">Connect Device</div>
@@ -34,12 +15,20 @@
               <output id="notification-message">Notifications</output>
             </q-card-section>
           </q-card>
-        </div>
-        
-      </div>
-      <div class="row">
-        <div class="col-sm-12 col-md-8">
-          <q-card class="q-gutter-md">
+          
+          <q-card >
+            <q-card-section class="q-gutter-md">
+              Run stops when either end condition is met. <br> Leave time at max to use accumulated coulombs as the end point.
+              <br> 
+              <input type="number" v-model="maxCoulombs" /> {{maxCoulombs}} C
+              <input type="number" v-model="maxTimeS" /> {{maxTimeS}} S 
+              
+              <br> Read Interval (S) <input type="number" v-model="readIntervalS" /> {{readIntervalS}} S 
+              <br>
+            <q-btn ref="startBtn"  @click="startBtnClick()" >{{srtBtnLabel}} </q-btn>
+            </q-card-section>
+          </q-card>
+           <q-card class="q-gutter-md">
             <div class="text-h6">Manual Commands</div>
             <q-card-section>
               <div class="row">
@@ -48,22 +37,43 @@
               </div>
             
             </q-card-section>
-            
             <q-card-section>
-              <div class="row">
-                <div class="col">
-                    <div class="row">
-                       <q-btn id="rd-button" @click="read()">Read</q-btn>
-                    </div>
-                      <div class="row">
-                        <textarea class="form-control" v-model="outputTextArea" rows="5" ></textarea>
-                      </div>
-                </div>
-              </div>
+                       <q-btn id="rd-button" @click="readManualResponse()">Read</q-btn>
+                    
             </q-card-section>
           </q-card>
         </div>
+        
+        <div class="col-xs-12  col-md-7">
+          <q-card>
+            
+            <q-card-section>
+              
+                        <div>
+                         connected: {{isConnected}} <br>
+                         running: {{isRunning}}  <br>
+                         elapsed Time (ms): {{elapsedTimeM}} <br>
+                         coulombs:  {{elapsedCoulombs}} <br>
+                         current: {{current}} <br> 
+                         current calib. adj. : 
+                          <input type="number" v-model="CH1ACalAdjust" /> {{CH1ACalAdjust}} A
+                        </div>
+                         <br> <q-btn id="rd-button" @click="downloadData()">Download csvData</q-btn>
+                        
+                        <textarea  v-model="outputTextArea" rows=20 style="box-sizing: border-box; width: 90%; height= 90%" ></textarea>
+                      
+            </q-card-section>
+          </q-card>
+        </div>
+        
       </div>
+      
+        <div class="col-sm-12 col-md-4 ">
+         
+        </div>
+        <div class="col-sm-12 col-md-8 ">
+        </div>
+     
     </div>
   </div>
  
@@ -76,57 +86,45 @@ import Webusbtmc from '../assets/webusbtmc.js';
 
 
 let tmc = new Webusbtmc();
-
-
-//console.log("tmc is " , tmc);
-
-const OutputTo = {  // in case biary or image data are needed (not implemented here)
-  Text: 1,
-  Image: 2,
-  Download: 3,
-};
-let myOutputTo;
-
-myOutputTo = OutputTo.Text;  // sets myOutputTo to 1 for display 
-
-
-
 export default {
   name: 'PageIndex',
   data(){
     return {
-     //tmc: {},
-      group: '  -',
-      accumUnits: [
-        {
-          label: 'Seconds',
-          value: 'S'
-        },
-        {
-          label: 'Coulombs',
-          value: 'C'
-        }
-      ],
+      srtBtnLabel: "Start",
       isConnected: false,
+      isRunning: false,
       outputTextArea : "",
-      accumCoulombs : true,
-      accumulatedUnits : 0,
-      stopPoint : 10,  //default is seconds
       startTime : 0,
-      readInterval : 3000,
+      readIntervalS : 1,
       cmdDelay : 200,  // milliseconds between commands
-      elapsedTime : 0,
+      elapsedTimeM : 0,  // in milliS
+      elapsedCoulombs: 0.0,
+      maxTimeS : 15, // 86400,  // one day in milliS
+      maxCoulombs : 100.0,
+      CH1ACalAdjust : -0.002,
+      current: 0,
       resultArray: [],
-      csvData : "",
+      csvHeader: " millis, accumC, twenty, V1, A1, W1, V2, A2, W2, setV1, setA1, setV2, setA2",
+      csvData : this.csvHeader,
       lastRead: "",
       readTimer: null
-     // connectionState: "connected"
     }
   },
   computed: {
       connectionState() { 
         return this.isConnected ? "Disconnect" : "Connect"
+        },
+      readInterval() {
+        return this.readIntervalS * 1000
+      },
+      endCondition() {
+        if (this.elapsedTimeM > (this.maxTimeS * 1000) || this.elapsedCoulombs > this.maxCoulombs) {
+          console.log("endcondition ", this.elapsedTimeM , ", " , this.maxTimeS  , "," , this.elapsedCoulombs , "," ,  this.maxCoulombs)
+          return true
+        } else {
+          return false
         }
+      }
   },
   methods: {
  /*    setup() {
@@ -156,48 +154,85 @@ export default {
             });
         }
     },
-    startBtnClick(){
-      this.readTimer = setInterval(this.readAll, this.readInterval);
+    async initialize(){
+      this.outputTextArea =  this.csvHeader ;
+      this.elapsedTimeM = 0;
+      this.elapsedCoulombs = 0;
+      this.current = 0;
+      this.resultArray= [];
+      this.csvData = this.csvHeader;
+      this.lastRead= "";
+      this.startTime = Date.now();
       
-      let d = new Date()
-      this.startTime = d.getTime()
-        
+      this.srtBtnLabel = "Stop";
+      this.isRunning = true;
+      this.writeDevice("OUTP CH1,ON");
+      setTimeout(this.readAll, this.cmdDelay);
+       // blocking delay
+        // first read 1 cmdDelay to write request, another to read result
     },
-    async readAll( ){
-      let text = "*READALL?";
-      console.log("Text is ", text, " read at  ", this.elapsedTime, "ms after a delay of ", this.cmdDelay)
-      tmc.write(text).then(() => {
-                this.addOutput(text);
-              }).catch((error) => {
-                this.notify(error);
-              });  
+    startBtnClick(){
+      if (this.isRunning) {
+        
+        this.endRun();
+        setTimeout(() => {clearInterval(this.readTimer)}, 9000);  // fallback to max time limit
+        
+      } else {
+        this.initialize();
+        this.readTimer = setInterval(this.readAll, this.readIntervalS * 1000);  // subsequent reads
+      }
+    },
+    async readAll( ){  // requests and reads each readInterval, then calls endRun()
+      if (this.isConnected) {
+        if (this.endCondition ) {
+          this.endRun()
+          } else {
+              this.notify("");
+              //let text = "*READALL?";
+              this.writeDevice("*READALL?");
+              setTimeout(this.readAllResponse, this.cmdDelay)  // reads after cmdDelay
+              //console.log("Text is ", text, " read at  ", this.elapsedTimeM, "ms after a delay of ", this.cmdDelay)
+          }
+      } else {
+        this.notify("trying to read while not Connected!");
+        this.endRun();
+      }
+    },
+    async readManualResponse(){
       
-      setTimeout(this.readAllResponse, this.cmdDelay)
-     
+      let resultText =  await this.readDevice();  
+      if (!resultText) {
+        return;
+      }
+      this.outputTextArea = this.outputTextArea +  '\n' + resultText;
+
     },
     async readAllResponse(){
-      let resultText = await this.read();
-      this.resultArray.push(this.readAllParse(resultText));
-              
-      let d = new Date()
-      let now = d.getTime()
-      this.elapsedTime = now - this.startTime;
-      this.accumulatedUnits =  this.elapsedTime / 1000;  //seconds
+      let resultText =  await this.readDevice();
+      this.resultArray = this.readAllParse(resultText);
+      console.log("220 resultText is ", resultText);
+      this.current = parseFloat(this.resultArray[3] ) + parseFloat(this.CH1ACalAdjust);   //TODO? - nake this an object?
+      //let d = new Date()
+      //let now = Date.now()
+      this.elapsedTimeM = Date.now() - this.startTime;  //in milliS
+      this.elapsedCoulombs =  this.elapsedCoulombs + this.readIntervalS * this.current;  //seconds
       
-      console.log("l161 accum is ", this.accumulatedUnits, "  resultArray is ", this.resultArray);
-      // this.accumulatedUnits = this.accumulatedUnits ;
-      if (this.accumulatedUnits > this.stopPoint) {
-        clearInterval(this.readTimer)
-      };
-      this.notify("all done!");
-      this.compileData()
+      console.log("218 resultText is ", resultText, " at ", this.elapsedTimeM, " with ", this.elapsedCoulombs, " C");
+      this.addOutput(resultText);
+      this.lastRead = resultText;
     },
-    compileData(){
-      console.log(this.resultArray);
+    endRun(){
+      this.notify("all done!");
+      
+      this.srtBtnLabel = "Start";
+      this.isRunning = false;
+      clearInterval(this.readTimer);
+      setTimeout( this.writeDevice("OUTP CH1,OFF") , this.cmdDelay);  
+      console.log("endRun()");
     },
     readAllParse(resultStr = "1,2") {  // expects a string of numbers
       
-      console.log("result String is ", resultStr)  
+      console.log("233 result String is ", resultStr)  
       let resultArray = resultStr.split(',');
       console.log("result array is ", resultArray);
       let d = new Date()
@@ -205,64 +240,57 @@ export default {
       resultArray.unshift(now);
      return  resultArray; 
     },
-    writeBtnClick() {
-        console.log("in writeBtnClick() function ", this.isConnected);
+    writeDevice(text){
+        console.log("writing at ", Date.now() - this.startTime, " ", text)
         if (this.isConnected) {
-            const text = this.$refs.inputText.value;
-            /* if data is binary
-                
-            if ($writeWhich.html() == 'Binary Data' && binaryFile !== undefined && binaryFile !== null) {
-                const buffer = new Uint8Array(binaryFile);
-
-                if (text === undefined || text === '') {
-                tmc.writeBytes(buffer).then(() => {
-                    print('Data chunk was sent successfully');
-                    $writeButton.html('Write');
-                }).catch((error) => {
-                    notify(error);
-                    $writeButton.html('Write');
-                });  
-                }
-                else {
-                tmc.writeBlockData(text, buffer).then(() => {
-                    print('Binary data was sent successfully');
-                    $writeButton.html('Write');
-                }).catch((error) => {
-                    notify(error);
-                    $writeButton.html('Write');
-                });  
-                }
-            } */
-
             if (text === undefined || text === '') {
               this.notify('Text is empty');
             }
             else {
-              tmc.write(text).then(() => {
-                this.addOutput(text);
-              }).catch((error) => {
-                this.notify(error);
-              });  
+                  tmc.write(text).then(() => {
+                   console.log("cmd ", text);
+                   // this.addOutput(text);
+                  }).catch((error) => {
+                    this.notify(error);
+                  }) 
             }
         } else {
             this.notify('');
         }
       
     },
-
-    read() {
-        let resultText = "";
-        console.log("in read() method", this.isConnected);
+    writeBtnClick() {
+       // console.log("in writeBtnClick() function ", this.isConnected);
         if (this.isConnected) {
+            const text = this.$refs.inputText.value;
+
+            if (text === undefined || text === '') {
+              this.notify('Text is empty');
+            }
+            else {
+              this.writeDevice(text);
+              this.outputTextArea = this.outputTextArea +  '\n' + text;
+            }
+        } else {
+            this.notify('not connected');
+        }
+      
+    },
+
+    async readDevice() {
+        let resultText = "";
+        console.log("reading at ", Date.now() - this.startTime, " ", this.isConnected);
+        try {
+          if (this.isConnected) {
             this.notify("");
             let length = 1024;
 
-            tmc
+            await tmc
                 .readBytes(length)
                 .then((result) => {
-                    console.log(" after tmc read, result is ", result);
+                    //console.log(" after tmc read, result is ", result);
                     if (!result || result.length == 0) {
-                      this.addOutput("Failed to receive the response");
+                      alert("Failed to receive the response");
                     } else {
                         
                       if (typeof result === 'string' || result instanceof String) {
@@ -275,25 +303,31 @@ export default {
                         resultText = textDecoder.decode(result);
                         //console.log("resultText before replacement >", resultText, "<");
                         resultText = resultText.replace(tmc.terminatorRead,'');
-                        //console.log("resultText after replacement >", resultText, "<");
+                        console.log("resultText after replacement >", resultText, "<");
+
                       } 
-                      console.log("resultText is ", resultText);
-                      this.addOutput(resultText);
-                      this.lastRead = resultText;
                     }
                 })
                 .catch((error) => {
                 this.notify(error);
                 });
+            }
         }
+      catch (err) {
+        this.notify(error);
+      }
+      finally {
         return resultText;
+      }
     },
-    addOutput(text) {   // input must be a string
+    addOutput(text) {   // input must be a string, added to output text area and to csvData 
       if (!text) {
         return;
       }
-      console.log("in addOutput, text is ", text)
-      this.outputTextArea = this.outputTextArea + '\n' + text;
+      text = this.elapsedTimeM.toString() + ", " + this.elapsedCoulombs.toFixed(4) + ", " + text;
+      console.log("in addOutput, text is ", text);
+      this.csvData = this.csvData + '\n' + text;
+      this.outputTextArea = this.outputTextArea +  '\n' + text;
     
     },
     
@@ -359,6 +393,9 @@ export default {
         document.getElementById("notification-message").innerHTML = "Notifications: " + message;
     }
 
-  }
+  },
+  beforeUnmount() {
+   // clearInterval(this.readInterval);
+  },
 }
 </script>
