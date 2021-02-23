@@ -55,8 +55,17 @@
                          elapsed Time (ms): {{elapsedTimeM}} <br>
                          coulombs:  {{elapsedCoulombs}} <br>
                          current: {{current}} <br> 
-                         current calib. adj. : 
-                          <input type="number" v-model="CH1ACalAdjust" /> {{CH1ACalAdjust}} A
+                         <br>
+
+                          <q-slider v-model="CH1ACalAdjust" :min="-0.003" :max="0.003"  :step="0.001"
+      label
+      :label-value="'Current Zero Adjust ' + CH1ACalAdjust + ' A'"
+      label-always
+      />  <br>
+      
+                           <q-slider v-model="cmdDelay" :min="100" :max="500" :step="10"  label
+      :label-value="'Command Delay ' + cmdDelay + ' ms'"
+      label-always/>
                         </div>
                          <br> <q-btn id="rd-button" @click="downloadData()">Download csvData</q-btn>
                         
@@ -67,13 +76,7 @@
         </div>
         
       </div>
-      
-        <div class="col-sm-12 col-md-4 ">
-         
-        </div>
-        <div class="col-sm-12 col-md-8 ">
-        </div>
-     
+           
     </div>
   </div>
  
@@ -96,7 +99,7 @@ export default {
       outputTextArea : "",
       startTime : 0,
       readIntervalS : 1,
-      cmdDelay : 200,  // milliseconds between commands
+      cmdDelay : 250,  // milliseconds between commands
       elapsedTimeM : 0,  // in milliS
       elapsedCoulombs: 0.0,
       maxTimeS : 15, // 86400,  // one day in milliS
@@ -167,7 +170,7 @@ export default {
       this.srtBtnLabel = "Stop";
       this.isRunning = true;
       this.writeDevice("OUTP CH1,ON");
-      setTimeout(this.readAll, this.cmdDelay);
+      // setTimeout(this.readAll, this.cmdDelay);
        // blocking delay
         // first read 1 cmdDelay to write request, another to read result
     },
