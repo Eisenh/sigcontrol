@@ -1,86 +1,87 @@
 <template>
- <div>
-   
-  <div  >
-    <h6> Control of Power Supply with SCPI over WebUSBTMC</h6>
-    <div class="q-gutter-md">
-      <div class="row q-gutter-md ">
-        
-        <div class="col-xs-12  col-md-4 ">
-          <q-card >
-            <q-card-section class="q-gutter-md" >
-              <div class="text-h6">Connect Device</div>
-              <q-btn ref="connectButton"  @click="connectButtonClick()"> {{connectionState}} </q-btn> <output ref="devName" ></output>
-              <br>
-              <output id="notification-message">Notifications</output>
-            </q-card-section>
-          </q-card>
+  <div>
+   <audio ref="finishedAlarm" src="../assets/mixkit-classic-alarm-995.wav" type="audio/wav">
+    </audio>
+    <div  >
+      <h6> Control of Power Supply with SCPI over WebUSBTMC</h6>
+      <div class="q-gutter-md">
+        <div class="row q-gutter-md ">
           
-          <q-card >
-            <q-card-section class="q-gutter-md">
-              Run stops when either end condition is met. <br> Leave time at max to use accumulated coulombs as the end point.
-              <br> 
-              <input type="number" v-model="maxCoulombs" /> {{maxCoulombs}} C
-              <input type="number" v-model="maxTimeS" /> {{maxTimeS}} S 
-              
-              <br> Read Interval (S) <input type="number" v-model="readIntervalS" /> {{readIntervalS}} S 
-              <br>
-            <q-btn ref="startBtn"  @click="startBtnClick()" >{{srtBtnLabel}} </q-btn>
-            </q-card-section>
-          </q-card>
-           <q-card class="q-gutter-md">
-            <div class="text-h6">Manual Commands</div>
-            <q-card-section>
-              <div class="row">
-                <input type="text" ref="inputText" class="form-control" placeholder="Select or Enter Command" >  
-                <q-btn id="wr-button" @click="writeBtnClick()">Write</q-btn> 
-              </div>
+          <div class="col-xs-12  col-md-4 ">
+            <q-card >
+              <q-card-section class="q-gutter-md" >
+                <div class="text-h6">Connect Device</div>
+                <q-btn ref="connectButton"  @click="connectButtonClick()"> {{connectionState}} </q-btn> <output ref="devName" ></output>
+                <br>
+                <output id="notification-message">Notifications</output>
+              </q-card-section>
+            </q-card>
             
-            </q-card-section>
-            <q-card-section>
-                       <q-btn id="rd-button" @click="readManualResponse()">Read</q-btn>
-                    
-            </q-card-section>
-          </q-card>
-        </div>
-        
-        <div class="col-xs-12  col-md-7">
-          <q-card>
-            
-            <q-card-section>
+            <q-card >
+              <q-card-section class="q-gutter-md">
+                Run stops when either end condition is met. <br> Leave time at max to use accumulated coulombs as the end point.
+                <br> 
+                <input type="number" v-model="maxCoulombs" /> {{maxCoulombs}} C
+                <input type="number" v-model="maxTimeS" /> {{maxTimeS}} S 
+                
+                <br> Read Interval (S) <input type="number" v-model="readIntervalS" /> {{readIntervalS}} S 
+                <br>
+              <q-btn ref="startBtn"  @click="startBtnClick()" >{{srtBtnLabel}} </q-btn>
+              </q-card-section>
+            </q-card>
+            <q-card class="q-gutter-md">
+              <div class="text-h6">Manual Commands</div>
+              <q-card-section>
+                <div class="row">
+                  <input type="text" ref="inputText" class="form-control" placeholder="Select or Enter Command" >  
+                  <q-btn id="wr-button" @click="writeBtnClick()">Write</q-btn> 
+                </div>
               
-                        <div>
-                         connected: {{isConnected}} <br>
-                         running: {{isRunning}}  <br>
-                         elapsed Time (ms): {{elapsedTimeM}} <br>
-                         coulombs:  {{elapsedCoulombs}} <br>
-                         current: {{current}} <br> 
-                         <br>
-
-                          <q-slider v-model="CH1ACalAdjust" :min="-0.003" :max="0.003"  :step="0.001"
-      label
-      :label-value="'Current Zero Adjust ' + CH1ACalAdjust + ' A'"
-      label-always
-      />  <br>
-      
-                           <q-slider v-model="cmdDelay" :min="100" :max="500" :step="10"  label
-      :label-value="'Command Delay ' + cmdDelay + ' ms'"
-      label-always/>
-                        </div>
-                         <br> <q-btn id="rd-button" @click="downloadData()">Download csvData</q-btn>
-                        
-                        <textarea  v-model="outputTextArea" rows=20 style="box-sizing: border-box; width: 90%; height= 90%" ></textarea>
+              </q-card-section>
+              <q-card-section>
+                        <q-btn id="rd-button" @click="readManualResponse()">Read</q-btn>
                       
-            </q-card-section>
-          </q-card>
-        </div>
+              </q-card-section>
+            </q-card>
+          </div>
+          
+          <div class="col-xs-12  col-md-7">
+            <q-card>
+              
+              <q-card-section>
+                
+                          <div>
+                          connected: {{isConnected}} <br>
+                          running: {{isRunning}}  <br>
+                          elapsed Time (ms): {{elapsedTimeM}} <br>
+                          coulombs:  {{elapsedCoulombs}} <br>
+                          current: {{current}} <br> 
+                          <br>
+
+                            <q-slider v-model="CH1ACalAdjust" :min="-0.003" :max="0.003"  :step="0.001"
+        label
+        :label-value="'Current Zero Adjust ' + CH1ACalAdjust + ' A'"
+        label-always
+        />  <br>
         
+                            <q-slider v-model="cmdDelay" :min="100" :max="500" :step="10"  label
+        :label-value="'Command Delay ' + cmdDelay + ' ms'"
+        label-always/>
+                          </div>
+                          <br> <q-btn id="rd-button" @click="downloadData()">Download csvData</q-btn>
+                          
+                          <textarea  v-model="outputTextArea" rows=20 style="box-sizing: border-box; width: 90%; height= 90%" ></textarea>
+                        
+              </q-card-section>
+            </q-card>
+          </div>
+          
+        </div>
+            
       </div>
-           
     </div>
+  
   </div>
- 
- </div>
 </template>
 
 <script>
@@ -134,7 +135,12 @@ export default {
       tmc = new Webusbtmc();
       this.$refs.devName.innerHTML = "Connecting to " + JSON.stringify(tmc);
     }, */
+   
     connectButtonClick() {
+
+      //var x = document.getElementById("finishedAlarm"); 
+      //x.play(); 
+
         console.log("in connectButtonClick() function");
         if (this.isConnected) {
             this.notify("");
@@ -227,6 +233,7 @@ export default {
     endRun(){
       this.notify("all done!");
       
+      this.$refs.finishedAlarm.play(); 
       this.srtBtnLabel = "Start";
       this.isRunning = false;
       clearInterval(this.readTimer);
