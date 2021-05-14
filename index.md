@@ -1,4 +1,4 @@
-Control SPD3303X power supply note: for windows, winUSB driver must first be installed (e.g.,using Zadig) https://github.com/pbatard/libwdi/wiki/Zadig
+**Control SPD3303X power supply note: for windows, winUSB driver must first be installed (e.g.,using Zadig) https://github.com/pbatard/libwdi/wiki/Zadig
 
 Install the dependencies
 yarn
